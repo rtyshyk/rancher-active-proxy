@@ -1,4 +1,4 @@
-{{- $ldap_env_enable := or (env "LDAP_ENABLE") "true" }}
+{{- $ldap_env_enable := or (env "LDAP_ENABLE") "false" }}
 {{- $ldap_uri := env "LDAP_URI"}}
 {{- $ldap_binddn := env "LDAP_BINDDN"}}
 {{- $ldap_binddn_passwd := env "LDAP_BINDDN_PASSWD"}}
@@ -61,10 +61,10 @@ include /etc/nginx/vhost.d/default_server;
 
 {{- $is_https := (and (ne $https_method "nohttps") (ne $cert "") (exists (printf "/etc/nginx/certs/%s.crt" $cert)) (exists (printf "/etc/nginx/certs/%s.key" $cert))) }}
 
-{{- $ldap_env_enable := or (env "LDAP_ENABLE") "true" }}
-{{- $ldap_enable := .FIRST.Labels.GetValue "ldap.enable" "true" }}
-{{- $auth_token := .FIRST.Labels.GetValue "auth.auth_token" "9478107ca2bb1e14d73c66c72dda356dfbb0ad39"}}
-{{- $header_xrobots := .FIRST.Labels.GetValue "headers.xrobots" "noindex, nofollow"}}
+{{- $ldap_env_enable := or (env "LDAP_ENABLE") "false" }}
+{{- $ldap_enable := .FIRST.Labels.GetValue "rap.ldap_enable" "false" }}
+{{- $auth_token := .FIRST.Labels.GetValue "rap.ldap_bypass_token" ""}}
+{{- $header_xrobots := .FIRST.Labels.GetValue "rap.headers_x_robots_tag" ""}}
 
 geo $internal_request {
     default 0;
@@ -138,36 +138,43 @@ server {
 	include /etc/nginx/vhost.d/default;
 	{{- end }}
 
-    add_header X-Robots-Tag "{{$header_xrobots}}";
+    {{- if (ne $header_xrobots "") }}
+        add_header X-Robots-Tag "{{$header_xrobots}}";
+    {{- end }}
 
-    #START LDAP AUTH LOCATIONS, enable only when ldap host and ldap for container is enabled
-    {{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
-
-        #location auth token
-        location /{{$auth_token}} {
-            add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
-            return 302 $scheme://$host;
-        }
-
+    {{- if (and (eq $ldap_enable "true") (eq $ldap_env_enable "true") ) }}
+        #START LDAP AUTH LOCATIONS, enable only when ldap host and ldap for container is enabled
         error_page 401 = @error401;
-
         location @error401 {
             auth_ldap "Secure";
             auth_ldap_servers ldapserver;
             add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
             proxy_pass {{ trim $proto }}://{{ trim $host }};
         }
+
+        {{- if (ne $auth_token "") }}
+            #location auth token
+            location /{{$auth_token}} {
+                add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
+                return 302 $scheme://$host;
+            }
+        {{- end }}
+
+        #END LDAP AUTH LOCATIONS
 	{{- end }}
-	#END LDAP AUTH LOCATIONS
+
+
 
 	location / {
-        #if no cookie and ldap enabled, force ldap authentication
-		{{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
-		set $restrict 0;
+		{{- if (and (eq $ldap_enable "true") (eq $ldap_env_enable "true") ) }}
+		#if no cookie and ldap enabled, force ldap authentication
+		set $restrict 1;
 
-		if ($cookie_auth_token != {{$auth_token}}) {
-			set $restrict 1;
-		}
+        {{- if (ne $auth_token "") }}
+            if ($cookie_auth_token = {{$auth_token}}) {
+                set $restrict 0;
+            }
+        {{- end }}
 
 		if ($internal_request = 1) {
 			set $restrict 0;
@@ -225,36 +232,40 @@ server {
 	include /etc/nginx/vhost.d/default;
 	{{- end }}
 
-	add_header X-Robots-Tag "{{$header_xrobots}}";
+    {{- if (ne $header_xrobots "") }}
+        add_header X-Robots-Tag "{{$header_xrobots}}";
+    {{- end }}
 
-    #START LDAP AUTH LOCATIONS, enable only when ldap host and ldap for container is enabled
-    {{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
-
-        #location auth token
-        location /{{$auth_token}} {
-            add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
-            return 302 $scheme://$host;
-        }
-
+    {{- if (and (eq $ldap_enable "true") (eq $ldap_env_enable "true") ) }}
+        #START LDAP AUTH LOCATIONS, enable only when ldap host and ldap for container is enabled
         error_page 401 = @error401;
-
         location @error401 {
             auth_ldap "Secure";
             auth_ldap_servers ldapserver;
             add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
             proxy_pass {{ trim $proto }}://{{ trim $host }};
         }
+
+        {{- if (ne $auth_token "") }}
+            #location auth token
+            location /{{$auth_token}} {
+                add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
+                return 302 $scheme://$host;
+            }
+        {{- end }}
+        #END LDAP AUTH LOCATIONS
 	{{- end }}
-	#END LDAP AUTH LOCATIONS
 
 	location / {
-        #if no cookie and ldap enabled, force ldap authentication
 		{{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
-		set $restrict 0;
+		#if no cookie and ldap enabled, force ldap authentication
+		set $restrict 1;
 
-		if ($cookie_auth_token != {{$auth_token}}) {
-            set $restrict 1;
-        }
+        {{- if (ne $auth_token "") }}
+            if ($cookie_auth_token = {{$auth_token}}) {
+                set $restrict 0;
+            }
+        {{- end }}
 
 		if ($internal_request = 1) {
 			set $restrict 0;

@@ -52,10 +52,9 @@ Provided your DNS is setup to forward foo.bar.com to the a host running `rancher
 | `rap.server_tokens`    	 | Enable to specify the server_token value per container
 | `rap.client_max_body_size` | Enable to specify the client_max_body_size directive per container
 | `rap.rap_name`             | If `RAP_NAME` is specified for a RAP instance only container with label value matching `RAP_NAME` value will be publish
-| `ldap.enable`              | Use it to enable/disable LDAP authentication. Default: `true`  
-| `auth.auth_token`          | Secret token to bypass authentication, e.g. domain.com/secret_token_value Default: `4d6ecb289c2ec4087db6f8db69d97c06278fce41`  
-| `headers.xrobots`          | X-Robots-Tag header [link](https://developers.google.com/search/reference/robots_meta_tag). Default: `noindex, nofollow`  
-
+| `rap.ldap_enable`          | Use it to enable/disable LDAP authentication. Default: `false`.  
+| `rap.ldap_bypass_token`    | Secret token to bypass authentication, e.g. `domain.com/secret_token_value`. Default empty and bypass not allowed.    
+| `rap.headers_x_robots_tag` | X-Robots-Tag header value [link](https://developers.google.com/search/reference/robots_meta_tag). Default empty and not exposed. Usefull to restrict google index website during development.
 #### Summary of environment variable available for Rancher Active Proxy.
 
 |       Label        |            Description         |
@@ -70,13 +69,15 @@ Provided your DNS is setup to forward foo.bar.com to the a host running `rancher
 | `RAP_NAME` 	     | If specify RAP will only publish service with `rap.rap_name = RAP_NAME`
 
 #### Summary of environment variable available for LDAP configuration
-**All variable is mandatory if LDAP enabled**
+**All variables is mandatory when is LDAP enabled**
 
-For more details see (https://github.com/kvspb/nginx-auth-ldap) 
+For more details see (https://github.com/kvspb/nginx-auth-ldap)
 
+The LDAP Basic Authentication is disabled for default rancher networks `10.42.0.0/16`, `172.17.0.0/16`.
+                                                                         
 |       Label                  |            Description         |
 | -----------------------------| ------------------------------ |
-| `LDAP_ENABLE`                | If ldap auth is enabled for all environement, expected `true` or `false`. By default `true`. 
+| `LDAP_ENABLE`                | If ldap auth is enabled for RAP instance containers, expected `true` or `false`. Default `true`. 
 | `LDAP_URI`                   | ldap://..., ldaps://... 
 | `LDAP_BINDDN`                | DN name to login.
 | `LDAP_BINDDN_PASSWD`         | Password for DN name. Must be empty string when secret file used.
