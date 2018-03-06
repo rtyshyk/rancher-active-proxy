@@ -25,3 +25,35 @@
       label: "Set to true to enable debug"
       default: "False"
       type: string
+    - variable: LDAP_ENABLE
+      label: "Enable LDAP for RAP instance"
+      default: "false"
+      type: string
+    - variable: LDAP_URI
+      label: "LDAP URI"
+      default: "ldaps://ldap.example.com/ou=employees,ou=company,dc=example,dc=com?uid?sub?(objectClass=person)"
+      type: string
+    - variable: LDAP_BINDDN
+      label: "LDAP service account"
+      default: "cn=read-only,dc=example,dc=com"
+      type: string
+    - variable: LDAP_BINDDN_PASSWD
+      label: "Service account password"
+      default: "password"
+      type: string
+    - variable: LDAP_GROUP_ATTRIBUTE
+      label: "Group attribute"
+      default: "member"
+      type: string
+    - variable: LDAP_GROUP_ATTRIBUTE_IS_DN
+      label: "Group attribute is DN"
+      default: "on"
+      type: string
+    - variable: LDAP_REQUIRE
+      label: "LDAP require"
+      default: "valid_user"
+      type: string
+    - variable: LDAP_SATISFY
+      label: "LDAP require"
+      default: "any"
+      type: string

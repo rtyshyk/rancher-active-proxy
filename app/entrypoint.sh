@@ -25,6 +25,10 @@ function check_dh_group {
         mv /etc/letsencrypt/.dhparam.pem.tmp /etc/letsencrypt/dhparam.pem || exit 1
     fi
 }
+	if [ ! -z "$LDAP_BINDDN_PASSWD_FILE" -a -z "$LDAP_BINDDN_PASSWD" ]; then
+	    LDAP_BINDDN_PASSWD=$(cat $LDAP_BINDDN_PASSWD_FILE)
+	fi
+
     unset LETSENCRYPT_CONTAINERS
     source /app/functions.sh
 

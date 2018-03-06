@@ -8,6 +8,14 @@ services:
       CRON: ${CRON}
       DEBUG: ${DEBUG}
       DEFAULT_PORT: ${DEFAULT_PORT}
+      LDAP_ENABLE: ${LDAP_ENABLE}
+      LDAP_URI: ${LDAP_URI}
+      LDAP_BINDDN: ${LDAP_BINDDN}
+      LDAP_BINDDN_PASSWD: ${LDAP_BINDDN_PASSWD}
+      LDAP_GROUP_ATTRIBUTE: ${LDAP_GROUP_ATTRIBUTE}
+      LDAP_GROUP_ATTRIBUTE_IS_DN: ${LDAP_GROUP_ATTRIBUTE_IS_DN}
+      LDAP_REQUIRE: ${LDAP_REQUIRE}
+      LDAP_SATISFY: ${LDAP_SATISFY}
     stdin_open: true
     volumes:
     - ${PATH}/htpasswd:/etc/nginx/htpasswd

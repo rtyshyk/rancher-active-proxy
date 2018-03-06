@@ -52,6 +52,9 @@ Provided your DNS is setup to forward foo.bar.com to the a host running `rancher
 | `rap.server_tokens`    	 | Enable to specify the server_token value per container
 | `rap.client_max_body_size` | Enable to specify the client_max_body_size directive per container
 | `rap.rap_name`             | If `RAP_NAME` is specified for a RAP instance only container with label value matching `RAP_NAME` value will be publish
+| `ldap.enable`              | Use it to enable/disable LDAP authentication. Default: `true`  
+| `auth.auth_token`          | Secret token to bypass authentication, e.g. domain.com/secret_token_value Default: `4d6ecb289c2ec4087db6f8db69d97c06278fce41`  
+| `headers.xrobots`          | X-Robots-Tag header [link](https://developers.google.com/search/reference/robots_meta_tag). Default: `noindex, nofollow`  
 
 #### Summary of environment variable available for Rancher Active Proxy.
 
@@ -65,6 +68,23 @@ Provided your DNS is setup to forward foo.bar.com to the a host running `rancher
 | `DEFAULT_PORT` 	 | Default port use for containers ( Default : `80` )
 | `SPECIFIC_HOST` 	 | Limit RAP to only containers of a specific host name
 | `RAP_NAME` 	     | If specify RAP will only publish service with `rap.rap_name = RAP_NAME`
+
+#### Summary of environment variable available for LDAP configuration
+**All variable is mandatory if LDAP enabled**
+
+For more details see (https://github.com/kvspb/nginx-auth-ldap) 
+
+|       Label                  |            Description         |
+| -----------------------------| ------------------------------ |
+| `LDAP_ENABLE`                | If ldap auth is enabled for all environement, expected `true` or `false`. By default `true`. 
+| `LDAP_URI`                   | ldap://..., ldaps://... 
+| `LDAP_BINDDN`                | DN name to login.
+| `LDAP_BINDDN_PASSWD`         | Password for DN name. Must be empty string when secret file used.
+| `LDAP_BINDDN_PASSWD_FILE`    | Password File for DN name to use rancher secrets. See http://rancher.com/docs/rancher/v1.4/en/cattle/secrets/#docker-hub-images.
+| `LDAP_GROUP_ATTRIBUTE`       | Group attribute.
+| `LDAP_GROUP_ATTRIBUTE_IS_DN` | Group attribute is DN.
+| `LDAP_REQUIRE` 		       | Expected values: valid_user, user, group
+| `LDAP_SATISFY` 	           | Expected value: all, any
 
 #### Quick Summary of interesting volume to mount.
 

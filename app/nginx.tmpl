@@ -1,3 +1,24 @@
+{{- $ldap_env_enable := or (env "LDAP_ENABLE") "true" }}
+{{- $ldap_uri := env "LDAP_URI"}}
+{{- $ldap_binddn := env "LDAP_BINDDN"}}
+{{- $ldap_binddn_passwd := env "LDAP_BINDDN_PASSWD"}}
+{{- $ldap_group_attribute := env "LDAP_GROUP_ATTRIBUTE"}}
+{{- $ldap_group_attribute_is_dn := env "LDAP_GROUP_ATTRIBUTE_IS_DN"}}
+{{- $ldap_require := env "LDAP_REQUIRE"}}
+{{- $ldap_satisfy := env "LDAP_SATISFY"}}
+
+{{- if eq $ldap_env_enable "true" }}
+ldap_server ldapserver {
+    url {{ $ldap_uri }};
+    binddn "{{ $ldap_binddn }}";
+    binddn_passwd {{ $ldap_binddn_passwd }};
+	group_attribute {{ $ldap_group_attribute }};
+	group_attribute_is_dn {{ $ldap_group_attribute_is_dn }};
+	require {{ $ldap_require }};
+	satisfy {{ $ldap_satisfy }};
+}
+{{- end}}
+
 {{ define "upstream" }}
 {{- if not .FIRST.Get -}}
 	upstream {{.HOST}} {
@@ -39,6 +60,17 @@ include /etc/nginx/vhost.d/default_server;
 {{- $le_bypass := .FIRST.Labels.GetValue "rap.le_bypass" "" }}
 
 {{- $is_https := (and (ne $https_method "nohttps") (ne $cert "") (exists (printf "/etc/nginx/certs/%s.crt" $cert)) (exists (printf "/etc/nginx/certs/%s.key" $cert))) }}
+
+{{- $ldap_env_enable := or (env "LDAP_ENABLE") "true" }}
+{{- $ldap_enable := .FIRST.Labels.GetValue "ldap.enable" "true" }}
+{{- $auth_token := .FIRST.Labels.GetValue "auth.auth_token" "9478107ca2bb1e14d73c66c72dda356dfbb0ad39"}}
+{{- $header_xrobots := .FIRST.Labels.GetValue "headers.xrobots" "noindex, nofollow"}}
+
+geo $internal_request {
+    default 0;
+    10.42.0.0/16 1;
+    172.17.0.0/16 1;
+}
 
 {{- if $is_https }}
 
@@ -106,7 +138,47 @@ server {
 	include /etc/nginx/vhost.d/default;
 	{{- end }}
 
+    add_header X-Robots-Tag "{{$header_xrobots}}";
+
+    #START LDAP AUTH LOCATIONS, enable only when ldap host and ldap for container is enabled
+    {{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
+
+        #location auth token
+        location /{{$auth_token}} {
+            add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
+            return 302 $scheme://$host;
+        }
+
+        error_page 401 = @error401;
+
+        location @error401 {
+            auth_ldap "Secure";
+            auth_ldap_servers ldapserver;
+            add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
+            proxy_pass {{ trim $proto }}://{{ trim $host }};
+        }
+	{{- end }}
+	#END LDAP AUTH LOCATIONS
+
 	location / {
+        #if no cookie and ldap enabled, force ldap authentication
+		{{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
+		set $restrict 0;
+
+		if ($cookie_auth_token != {{$auth_token}}) {
+			set $restrict 1;
+		}
+
+		if ($internal_request = 1) {
+			set $restrict 0;
+		}
+
+		if ($restrict = 1) {
+			return 401;
+		}
+
+		{{- end }}
+
 		{{- if eq $proto "uwsgi" }}
 		include uwsgi_params;
 		uwsgi_pass {{ trim $proto }}://{{ trim $host }};
@@ -116,8 +188,8 @@ server {
 		{{- if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
 		auth_basic	"Restricted {{ $host }}";
 		auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
-    {{- else if (exists (printf "/etc/nginx/htpasswd/%s" "default")) }}
-    auth_basic	"Restricted {{ $host }}";
+        {{- else if (exists (printf "/etc/nginx/htpasswd/%s" "default")) }}
+        auth_basic	"Restricted {{ $host }}";
 		auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" "default") }};
 		{{- end }}
 			{{- if (exists (printf "/etc/nginx/vhost.d/%s_location" $host)) }}
@@ -153,7 +225,47 @@ server {
 	include /etc/nginx/vhost.d/default;
 	{{- end }}
 
+	add_header X-Robots-Tag "{{$header_xrobots}}";
+
+    #START LDAP AUTH LOCATIONS, enable only when ldap host and ldap for container is enabled
+    {{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
+
+        #location auth token
+        location /{{$auth_token}} {
+            add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
+            return 302 $scheme://$host;
+        }
+
+        error_page 401 = @error401;
+
+        location @error401 {
+            auth_ldap "Secure";
+            auth_ldap_servers ldapserver;
+            add_header Set-Cookie "auth_token={{$auth_token}};Domain=.{{$host}};Path=/;Max-Age=2592000";
+            proxy_pass {{ trim $proto }}://{{ trim $host }};
+        }
+	{{- end }}
+	#END LDAP AUTH LOCATIONS
+
 	location / {
+        #if no cookie and ldap enabled, force ldap authentication
+		{{- if (and (eq $ldap_enable "true") ((eq $ldap_env_enable "true")) ) }}
+		set $restrict 0;
+
+		if ($cookie_auth_token != {{$auth_token}}) {
+            set $restrict 1;
+        }
+
+		if ($internal_request = 1) {
+			set $restrict 0;
+		}
+
+		if ($restrict = 1) {
+			return 401;
+		}
+
+		{{- end }}
+
 		{{- if eq $proto "uwsgi" }}
 		include uwsgi_params;
 		uwsgi_pass {{ trim $proto }}://{{ trim $host }};
@@ -163,8 +275,8 @@ server {
 		{{- if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
 		auth_basic	"Restricted {{ $host }}";
 		auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
-    {{- else if (exists (printf "/etc/nginx/htpasswd/%s" "default")) }}
-    auth_basic	"Restricted {{ $host }}";
+        {{- else if (exists (printf "/etc/nginx/htpasswd/%s" "default")) }}
+        auth_basic	"Restricted {{ $host }}";
 		auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" "default") }};
 		{{- end }}
 			{{- if (exists (printf "/etc/nginx/vhost.d/%s_location" $host)) }}
